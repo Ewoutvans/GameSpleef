@@ -187,7 +187,10 @@ public class GameSpleef {
                             floors,
                             gameSerialize.spawn,
                             gameSerialize.lobby,
-                            20
+                            20,
+                            2,
+                            7,
+                            5
                     );
                 }
                 getGameManager().iGames.add(iGame);

@@ -2,6 +2,18 @@
     {
         "modid": "gamespleef",
         "name": "GameSpleef",
-        "version": "1.0-SNAPSHOT"
+        "version": "1.0-SNAPSHOT",
+        "description": "A spleef minigame",
+        "url": "https://zeroprox.cloud",
+        "authorList": [
+            "ewoutvs_",
+            "Alagild"
+        ],
+        "dependencies": [
+            "spongeapi@7.0.0"
+        ],
+        "requiredMods": [
+            "spongeapi@7.0.0"
+        ]
     }
 ]

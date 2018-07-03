@@ -2,6 +2,7 @@ package cloud.zeroprox.gamespleef.game;
 
 import cloud.zeroprox.gamespleef.GameSpleef;
 import cloud.zeroprox.gamespleef.stats.PlayerStats;
+import com.flowpowered.math.vector.Vector3i;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.block.BlockSnapshot;
 import org.spongepowered.api.block.BlockTypes;
@@ -16,7 +17,6 @@ import org.spongepowered.api.scheduler.Task;
 import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.format.TextColors;
 import org.spongepowered.api.util.AABB;
-import org.spongepowered.api.world.BlockChangeFlag;
 import org.spongepowered.api.world.BlockChangeFlags;
 import org.spongepowered.api.world.Location;
 import org.spongepowered.api.world.World;
@@ -33,13 +33,15 @@ public class GameClassic implements IGame {
     private AABB area;
     private List<AABB> floors;
     private Transform<World> spawn, lobby;
-    private int limit, lowestY;
+    private int limit, lowestY, campRadius, campInterval, campPlayers;
     private HashMap<BlockSnapshot, UUID> brokenBlocks;
-    private Task task;
+    private Task countTask, campTask;
     Map<UUID, PlayerStats> activePlayers = new HashMap<>();
     Map<UUID, PlayerStats> inactivePlayers = new HashMap<>();
+    Map<UUID, Vector3i> playerPos = new HashMap<>();
+    HashSet<UUID> campWarnings = new HashSet<>();
 
-    public GameClassic(String name, AABB area, List<AABB> floors, Transform<World> spawn, Transform<World> lobby, int limit) {
+    public GameClassic(String name, AABB area, List<AABB> floors, Transform<World> spawn, Transform<World> lobby, int limit, int campRadius, int campInterval, int campPlayers) {
         this.name = name;
         this.area = area;
         this.floors = floors;
@@ -55,6 +57,10 @@ public class GameClassic implements IGame {
         }
         this.brokenBlocks = new HashMap<>();
         this.mode = GameSpleef.Mode.READY;
+
+        this.campRadius = campRadius;
+        this.campInterval = campInterval;
+        this.campPlayers = campPlayers;
     }
 
     @Override
@@ -144,10 +150,11 @@ public class GameClassic implements IGame {
 
         player.setTransform(this.getSpawn());
 
-        if (this.activePlayers.size() >= 1) {
+        if (this.activePlayers.size() >= 2) {
             if (this.mode == GameSpleef.Mode.READY) {
                 this.mode = GameSpleef.Mode.COUNTDOWN;
-                task = Task.builder().execute(new StartingTimerTask()).interval(1, TimeUnit.SECONDS).name("Game timer").submit(GameSpleef.getInstance());
+                if (countTask == null)
+                    countTask = Task.builder().execute(new StartingTimerTask()).interval(1, TimeUnit.SECONDS).name("Game timer").submit(GameSpleef.getInstance());
             }
         }
     }
@@ -171,14 +178,15 @@ public class GameClassic implements IGame {
     }
 
     @Override
-    public void addBreakBlock(Player player, BlockSnapshot targetBlock) {
-        if (this.mode != GameSpleef.Mode.PLAYING) return;
-        if (targetBlock.getState().equals(BlockTypes.AIR.getDefaultState())) return;
+    public boolean addBreakBlock(Player player, BlockSnapshot targetBlock) {
+        if (this.mode != GameSpleef.Mode.PLAYING) return false;
+        if (targetBlock.getState().equals(BlockTypes.AIR.getDefaultState())) return false;
         PlayerStats playerStats = this.getPlayerStats(player).get();
         playerStats.addBlocksBroken(1);
 
         targetBlock.getLocation().get().getExtent().setBlockType(targetBlock.getLocation().get().getBlockPosition(), BlockTypes.AIR);
         brokenBlocks.put(targetBlock, player.getUniqueId());
+        return true;
     }
 
     @Override
@@ -192,6 +200,12 @@ public class GameClassic implements IGame {
         this.inactivePlayers = new HashMap<>();
         for (UUID uuid : this.activePlayers.keySet()) {
             Sponge.getServer().getPlayer(uuid).get().offer(Keys.GAME_MODE, GameModes.SURVIVAL);
+        }
+
+        if (this.activePlayers.size() <= campPlayers) {
+            if (campTask == null) {
+                campTask = Task.builder().execute(new CampTimerTask()).interval(this.campInterval, TimeUnit.SECONDS).name("Game timer").submit(GameSpleef.getInstance());
+            }
         }
     }
 
@@ -239,11 +253,15 @@ public class GameClassic implements IGame {
             );
             resetGame();
         }
+        if (this.activePlayers.size() <= campPlayers) {
+            if (campTask == null) {
+                campTask = Task.builder().execute(new CampTimerTask()).interval(this.campInterval, TimeUnit.SECONDS).name("Game timer").submit(GameSpleef.getInstance());
+            }
+        }
     }
 
     @Override
     public void resetGame() {
-
 
         for (UUID playerUid : this.activePlayers.keySet()) {
             Player player = Sponge.getServer().getPlayer(playerUid).get();
@@ -258,7 +276,6 @@ public class GameClassic implements IGame {
         }
 
 
-
         for (BlockSnapshot bs : this.brokenBlocks.keySet()) {
             bs.restore(true, BlockChangeFlags.NONE);
         }
@@ -266,12 +283,12 @@ public class GameClassic implements IGame {
         this.mode = GameSpleef.Mode.READY;
 
         UUID max_kills_player = null;
-        double max_kills = 0;
+        double max_kills = -1;
 
         for (UUID playerUid : this.inactivePlayers.keySet()) {
             double k = this.inactivePlayers.get(playerUid).getKnockouts().size();
             Sponge.getServer().getPlayer(playerUid).get().sendMessage(
-                    Text.of(TextColors.GRAY, "[", TextColors.RED, "SPLEEF", TextColors.GRAY, "] You knocked out ", TextColors.RED, (int) k, TextColors.GRAY, " (", (int)(k/this.inactivePlayers.size() * 100.0), "%) players")
+                    Text.of(TextColors.GRAY, "[", TextColors.RED, "SPLEEF", TextColors.GRAY, "] You knocked out ", TextColors.RED, (int) k, TextColors.GRAY, " (", (int)(k/(this.inactivePlayers.size()-1) * 100.0), "%) players")
             );
             if (k > max_kills) {
                 max_kills = k;
@@ -280,7 +297,7 @@ public class GameClassic implements IGame {
         }
 
         UUID max_breaks_player = null;
-        double max_breaks = 0;
+        double max_breaks = -1;
         int totalBlocks = 0;
         for (AABB aabb : this.floors)
             totalBlocks += (aabb.getSize().getFloorX() * aabb.getSize().getFloorZ());
@@ -301,7 +318,7 @@ public class GameClassic implements IGame {
                     Text.of(TextColors.GRAY, "-------------------------------------------------")
             );
             Sponge.getServer().getPlayer(playerUid).get().sendMessage(
-                    Text.of(TextColors.GRAY, "Most knockouts by ", TextColors.RED, Sponge.getServer().getPlayer(max_kills_player).get().getName(), TextColors.GRAY, " (", (int)max_kills, ", ", (int)(max_kills/this.inactivePlayers.size()*100.0), "%)")
+                    Text.of(TextColors.GRAY, "Most knockouts by ", TextColors.RED, Sponge.getServer().getPlayer(max_kills_player).get().getName(), TextColors.GRAY, " (", (int)max_kills, ", ", (int)(max_kills/(this.inactivePlayers.size()-1)*100.0), "%)")
             );
             Sponge.getServer().getPlayer(playerUid).get().sendMessage(
                     Text.of(TextColors.GRAY, "Most blocks broke by ", TextColors.RED, Sponge.getServer().getPlayer(max_breaks_player).get().getName(), TextColors.GRAY, " (", (int)max_breaks, ", ", (int)(max_breaks/totalBlocks*100.0), "%)")
@@ -312,9 +329,56 @@ public class GameClassic implements IGame {
         }
 
         this.mode = GameSpleef.Mode.READY;
-        this.inactivePlayers.clear();
-        this.activePlayers.clear();
+        this.inactivePlayers = new HashMap<>();
+        this.activePlayers = new HashMap<>();
+        this.playerPos = new HashMap<>();
+        this.campTask.cancel();
+        this.countTask.cancel();
+        this.campTask = null;
+        this.countTask = null;
+    }
 
+    @Override
+    public boolean checkPlayerMoved(Optional<Player> player) {
+        Vector3i l = this.playerPos.get(player.get().getUniqueId());
+        Vector3i pl = player.get().getLocation().getBlockPosition();
+        this.playerPos.put(player.get().getUniqueId(), pl);
+        return l == null || (pl.getX() > l.getX() + campRadius || pl.getX() < l.getX() - campRadius || pl.getZ() > l.getZ() + campRadius || pl.getZ() < l.getZ() - campRadius);
+    }
+
+    private class CampTimerTask implements Consumer<Task> {
+
+        HashSet<UUID> temp = new HashSet<>();
+
+        @Override
+        public void accept(Task task) {
+            UUID[] array;
+
+            if (mode != GameSpleef.Mode.PLAYING)
+                return;
+
+            for (int length = (array = activePlayers.keySet().toArray(new UUID[0])).length, i = 0; i < length; ++i) {
+                UUID playerUid = array[i];
+                Player player = Sponge.getServer().getPlayer(playerUid).get();
+                player.offer(Keys.HEALTH, player.get(Keys.MAX_HEALTH).get());
+                player.offer(Keys.FOOD_LEVEL, 20);
+                if (!checkPlayerMoved(Sponge.getServer().getPlayer(playerUid))) {
+                    temp.add(playerUid);
+                    if (campWarnings.contains(playerUid)) {
+                        player.sendMessage(Text.of(TextColors.DARK_RED, "Kicked for camping!"));
+                        killPlayer(player);
+                        if (activePlayers.size() <= 1) {
+                            campWarnings.clear();
+                            return;
+                        }
+                    } else {
+                        player.sendMessage(Text.of(TextColors.DARK_RED, "WARNING: ", TextColors.GOLD, "Possible camping detected! Move to keep from being kicked!"));
+                    }
+                }
+            }
+            campWarnings.clear();
+            campWarnings.addAll(temp);
+        }
     }
 
     private class StartingTimerTask implements Consumer<Task> {

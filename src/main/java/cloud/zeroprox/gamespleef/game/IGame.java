@@ -40,7 +40,7 @@ public interface IGame {
 
     boolean containsPlayer(Player player);
 
-    void addBreakBlock(Player player, BlockSnapshot targetBlock);
+    boolean addBreakBlock(Player player, BlockSnapshot targetBlock);
 
     void toggleStatus();
 
@@ -51,4 +51,6 @@ public interface IGame {
     void killPlayer(Player player);
 
     void resetGame();
+
+    boolean checkPlayerMoved(Optional<Player> player);
 }
