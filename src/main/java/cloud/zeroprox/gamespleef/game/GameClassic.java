@@ -262,78 +262,81 @@ public class GameClassic implements IGame {
 
     @Override
     public void resetGame() {
-
-        for (UUID playerUid : this.activePlayers.keySet()) {
-            Player player = Sponge.getServer().getPlayer(playerUid).get();
-            player.getInventory().clear();
-            player.offer(Keys.GAME_MODE, GameModes.SURVIVAL);
-            player.offer(Keys.POTION_EFFECTS, new ArrayList<>());
-            player.offer(Keys.FOOD_LEVEL, 20);
-            player.offer(Keys.HEALTH, player.get(Keys.MAX_HEALTH).get());
-            player.setScoreboard(null);
-            player.setTransform(this.getLobby());
-            this.inactivePlayers.put(playerUid, this.activePlayers.get(playerUid));
-        }
-
-
-        for (BlockSnapshot bs : this.brokenBlocks.keySet()) {
-            bs.restore(true, BlockChangeFlags.NONE);
-        }
-        this.brokenBlocks.clear();
-        this.mode = GameSpleef.Mode.READY;
-
-        UUID max_kills_player = null;
-        double max_kills = -1;
-
-        for (UUID playerUid : this.inactivePlayers.keySet()) {
-            double k = this.inactivePlayers.get(playerUid).getKnockouts().size();
-            Sponge.getServer().getPlayer(playerUid).get().sendMessage(
-                    Text.of(TextColors.GRAY, "[", TextColors.RED, "SPLEEF", TextColors.GRAY, "] You knocked out ", TextColors.RED, (int) k, TextColors.GRAY, " (", (int)(k/(this.inactivePlayers.size()-1) * 100.0), "%) players")
-            );
-            if (k > max_kills) {
-                max_kills = k;
-                max_kills_player = playerUid;
+        if (this.mode == GameSpleef.Mode.PLAYING) {
+            for (UUID playerUid : this.activePlayers.keySet()) {
+                Player player = Sponge.getServer().getPlayer(playerUid).get();
+                player.getInventory().clear();
+                player.offer(Keys.GAME_MODE, GameModes.SURVIVAL);
+                player.offer(Keys.POTION_EFFECTS, new ArrayList<>());
+                player.offer(Keys.FOOD_LEVEL, 20);
+                player.offer(Keys.HEALTH, player.get(Keys.MAX_HEALTH).get());
+                player.setScoreboard(null);
+                player.setTransform(this.getLobby());
+                this.inactivePlayers.put(playerUid, this.activePlayers.get(playerUid));
             }
-        }
 
-        UUID max_breaks_player = null;
-        double max_breaks = -1;
-        int totalBlocks = 0;
-        for (AABB aabb : this.floors)
-            totalBlocks += (aabb.getSize().getFloorX() * aabb.getSize().getFloorZ());
 
-        for (UUID playerUid : this.inactivePlayers.keySet()) {
-            double i = this.inactivePlayers.get(playerUid).getBlocksBroken();
-            Sponge.getServer().getPlayer(playerUid).get().sendMessage(
-                    Text.of(TextColors.GRAY, "[", TextColors.RED, "SPLEEF", TextColors.GRAY, "] You broke ", TextColors.RED, (int) i, TextColors.GRAY, " blocks (", (int)(i/totalBlocks * 100.0), "%)")
-            );
-            if (i > max_breaks) {
-                max_breaks = i;
-                max_breaks_player = playerUid;
+            for (BlockSnapshot bs : this.brokenBlocks.keySet()) {
+                bs.restore(true, BlockChangeFlags.NONE);
             }
-        }
+            this.brokenBlocks.clear();
+            this.mode = GameSpleef.Mode.READY;
 
-        for (UUID playerUid : this.inactivePlayers.keySet()) {
-            Sponge.getServer().getPlayer(playerUid).get().sendMessage(
-                    Text.of(TextColors.GRAY, "-------------------------------------------------")
-            );
-            Sponge.getServer().getPlayer(playerUid).get().sendMessage(
-                    Text.of(TextColors.GRAY, "Most knockouts by ", TextColors.RED, Sponge.getServer().getPlayer(max_kills_player).get().getName(), TextColors.GRAY, " (", (int)max_kills, ", ", (int)(max_kills/(this.inactivePlayers.size()-1)*100.0), "%)")
-            );
-            Sponge.getServer().getPlayer(playerUid).get().sendMessage(
-                    Text.of(TextColors.GRAY, "Most blocks broke by ", TextColors.RED, Sponge.getServer().getPlayer(max_breaks_player).get().getName(), TextColors.GRAY, " (", (int)max_breaks, ", ", (int)(max_breaks/totalBlocks*100.0), "%)")
-            );
-            Sponge.getServer().getPlayer(playerUid).get().sendMessage(
-                    Text.of(TextColors.GRAY, "-------------------------------------------------")
-            );
+            UUID max_kills_player = null;
+            double max_kills = -1;
+
+            for (UUID playerUid : this.inactivePlayers.keySet()) {
+                double k = this.inactivePlayers.get(playerUid).getKnockouts().size();
+                Sponge.getServer().getPlayer(playerUid).get().sendMessage(
+                        Text.of(TextColors.GRAY, "[", TextColors.RED, "SPLEEF", TextColors.GRAY, "] You knocked out ", TextColors.RED, (int) k, TextColors.GRAY, " (", (int)(k/(this.inactivePlayers.size()-1) * 100.0), "%) players")
+                );
+                if (k > max_kills) {
+                    max_kills = k;
+                    max_kills_player = playerUid;
+                }
+            }
+
+            UUID max_breaks_player = null;
+            double max_breaks = -1;
+            int totalBlocks = 0;
+            for (AABB aabb : this.floors)
+                totalBlocks += (aabb.getSize().getFloorX() * aabb.getSize().getFloorZ());
+
+            for (UUID playerUid : this.inactivePlayers.keySet()) {
+                double i = this.inactivePlayers.get(playerUid).getBlocksBroken();
+                Sponge.getServer().getPlayer(playerUid).get().sendMessage(
+                        Text.of(TextColors.GRAY, "[", TextColors.RED, "SPLEEF", TextColors.GRAY, "] You broke ", TextColors.RED, (int) i, TextColors.GRAY, " blocks (", (int)(i/totalBlocks * 100.0), "%)")
+                );
+                if (i > max_breaks) {
+                    max_breaks = i;
+                    max_breaks_player = playerUid;
+                }
+            }
+
+            for (UUID playerUid : this.inactivePlayers.keySet()) {
+                Sponge.getServer().getPlayer(playerUid).get().sendMessage(
+                        Text.of(TextColors.GRAY, "-------------------------------------------------")
+                );
+                Sponge.getServer().getPlayer(playerUid).get().sendMessage(
+                        Text.of(TextColors.GRAY, "Most knockouts by ", TextColors.RED, Sponge.getServer().getPlayer(max_kills_player).get().getName(), TextColors.GRAY, " (", (int)max_kills, ", ", (int)(max_kills/(this.inactivePlayers.size()-1)*100.0), "%)")
+                );
+                Sponge.getServer().getPlayer(playerUid).get().sendMessage(
+                        Text.of(TextColors.GRAY, "Most blocks broke by ", TextColors.RED, Sponge.getServer().getPlayer(max_breaks_player).get().getName(), TextColors.GRAY, " (", (int)max_breaks, ", ", (int)(max_breaks/totalBlocks*100.0), "%)")
+                );
+                Sponge.getServer().getPlayer(playerUid).get().sendMessage(
+                        Text.of(TextColors.GRAY, "-------------------------------------------------")
+                );
+            }
         }
 
         this.mode = GameSpleef.Mode.READY;
         this.inactivePlayers = new HashMap<>();
         this.activePlayers = new HashMap<>();
         this.playerPos = new HashMap<>();
-        this.campTask.cancel();
-        this.countTask.cancel();
+        if (this.campTask != null)
+            this.campTask.cancel();
+        if (this.countTask != null)
+            this.countTask.cancel();
         this.campTask = null;
         this.countTask = null;
     }

@@ -124,11 +124,11 @@ public class BuildCmd implements CommandExecutor {
             } else {
                 textArray.add(Text.builder("Area: ").color(TextColors.GRAY).append(colorVariable(gameSerialize.area)).build());
             }
-            textArray.add(Text.builder("   - CORNER_AREA_1").color(TextColors.AQUA).onClick(TextActions.runCommand("/spleef admin build CORNER_AREA_1")).build());
-            textArray.add(Text.builder("   - CORNER_AREA_2").color(TextColors.AQUA).onClick(TextActions.runCommand("/spleef admin build CORNER_AREA_2")).build());
+            textArray.add(Text.builder("   - CORNER_AREA_1").color((gameSerialize.corner_area_1 == null ? TextColors.RED : TextColors.AQUA)).onClick(TextActions.runCommand("/spleef admin build CORNER_AREA_1")).build());
+            textArray.add(Text.builder("   - CORNER_AREA_2").color((gameSerialize.corner_area_2 == null ? TextColors.RED : TextColors.AQUA)).onClick(TextActions.runCommand("/spleef admin build CORNER_AREA_2")).build());
             textArray.add(Text.builder("Floors: ").color(TextColors.GRAY).append(colorVariable(gameSerialize.floors)).build());
-            textArray.add(Text.builder("   - CORNER_FLOOR_1").color(TextColors.AQUA).onClick(TextActions.runCommand("/spleef admin build CORNER_FLOOR_1")).build());
-            textArray.add(Text.builder("   - CORNER_FLOOR_2").color(TextColors.AQUA).onClick(TextActions.runCommand("/spleef admin build CORNER_FLOOR_2")).build());
+            textArray.add(Text.builder("   - CORNER_FLOOR_1").color((gameSerialize.corner_floor_1 == null ? TextColors.RED : TextColors.AQUA)).onClick(TextActions.runCommand("/spleef admin build CORNER_FLOOR_1")).build());
+            textArray.add(Text.builder("   - CORNER_FLOOR_2").color((gameSerialize.corner_floor_2 == null ? TextColors.RED : TextColors.AQUA)).onClick(TextActions.runCommand("/spleef admin build CORNER_FLOOR_2")).build());
             if (gameSerialize.corner_area_2 != null
                     && gameSerialize.corner_area_1 != null
                     && gameSerialize.floors.size() > 0
@@ -148,7 +148,8 @@ public class BuildCmd implements CommandExecutor {
         if (object == null) {
             return Text.builder(" --").color(TextColors.GREEN).build();
         } else if (object instanceof List) {
-            return Text.builder(" Amount: " + ((List)object).size()).color(TextColors.RED).build();
+            int amount = ((List)object).size();
+            return Text.builder(" Amount: " + amount).color((amount == 0 ? TextColors.RED: TextColors.GREEN)).build();
         } else {
             return Text.builder(" Okay").color(TextColors.GREEN).build();
         }

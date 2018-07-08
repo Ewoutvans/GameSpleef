@@ -19,7 +19,7 @@ public class ListCmd implements CommandExecutor {
     public CommandResult execute(CommandSource src, CommandContext args) {
         List<Text> arenas = new ArrayList<>();
         for (IGame IGame : GameSpleef.getGameManager().iGames) {
-            arenas.add(Text.builder(IGame.getName()).color(IGame.getMode() == GameSpleef.Mode.DISABLED ? TextColors.RED : TextColors.GREEN).onClick(TextActions.runCommand("/kow join " + IGame.getName())).build());
+            arenas.add(Text.builder(IGame.getName()).color(IGame.getMode() == GameSpleef.Mode.DISABLED ? TextColors.RED : TextColors.GREEN).onClick(TextActions.runCommand("/spleef join " + IGame.getName())).build());
         }
 
         PaginationList.builder()
