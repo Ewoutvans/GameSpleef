@@ -36,15 +36,16 @@ public class GameClassic implements IGame {
     private List<AABB> floors;
     private Transform<World> spawn, lobby;
     private int limit, lowestY, campRadius, campInterval, campPlayers;
+    private boolean saveInventories;
     private HashMap<BlockSnapshot, UUID> brokenBlocks;
     private Task countTask, campTask;
     Map<UUID, PlayerStats> activePlayers = new HashMap<>();
     Map<UUID, PlayerStats> inactivePlayers = new HashMap<>();
     Map<UUID, Vector3i> playerPos = new HashMap<>();
-    Map<UUID, LinkedHashSet<Optional<ItemStack>>> inventories = new HashMap<>();
+    Map<UUID, List<Optional<ItemStack>>> inventories = new HashMap<>();
     HashSet<UUID> campWarnings = new HashSet<>();
 
-    public GameClassic(String name, AABB area, List<AABB> floors, Transform<World> spawn, Transform<World> lobby, int limit, int campRadius, int campInterval, int campPlayers) {
+    public GameClassic(String name, AABB area, List<AABB> floors, Transform<World> spawn, Transform<World> lobby, int limit, int campRadius, int campInterval, int campPlayers, boolean saveInventories) {
         this.name = name;
         this.area = area;
         this.floors = floors;
@@ -64,6 +65,7 @@ public class GameClassic implements IGame {
         this.campRadius = campRadius;
         this.campInterval = campInterval;
         this.campPlayers = campPlayers;
+        this.saveInventories = saveInventories;
     }
 
     @Override
@@ -136,6 +138,10 @@ public class GameClassic implements IGame {
             player.sendMessage(Text.of(TextColors.RED, "You can't join the game is already started."));
             return;
         }
+        if (this.saveInventories == false && player.getInventory().totalItems() != 0) {
+            player.sendMessage(Text.of(TextColors.RED, "You need a empty inventory to join."));
+            return;
+        }
         player.health().set(20D);
         player.maxHealth().set(20D);
         player.foodLevel().set(20);
@@ -147,9 +153,17 @@ public class GameClassic implements IGame {
                 PotionEffect.builder().amplifier(1).duration(20 * 60 * 60 * 60).particles(false).potionType(PotionEffectTypes.SATURATION).build()));
         player.sendMessage(Text.of(TextColors.GREEN, "You have joined the game"));
 
+        if (this.saveInventories) {
+            List<Optional<ItemStack>> items = new ArrayList<>();
+            for (Inventory slot : player.getInventory().slots())  {
+                items.add(slot.peek());
+            }
+            this.inventories.put(player.getUniqueId(), items);
+        }
+
 
         ((PlayerInventory) player.getInventory()).getHotbar().setSelectedSlotIndex(0);
-
+        player.getInventory().clear();
         player.setTransform(this.getSpawn());
 
         this.activePlayers.put(player.getUniqueId(), new PlayerStats(player.getUniqueId()));
@@ -170,6 +184,16 @@ public class GameClassic implements IGame {
         }
         this.activePlayers.remove(player.getUniqueId());
         player.getInventory().clear();
+
+        if (this.saveInventories) {
+            List<Optional<ItemStack>> items = this.inventories.get(player.getUniqueId());
+            int index = 0;
+            for (Inventory slot : player.getInventory().slots())  {
+                slot.set(items.get(index).orElse(ItemStack.empty()));
+                index++;
+            }
+        }
+
         player.offer(Keys.GAME_MODE, GameModes.SURVIVAL);
         player.offer(Keys.POTION_EFFECTS, new ArrayList<>());
         player.setScoreboard(null);

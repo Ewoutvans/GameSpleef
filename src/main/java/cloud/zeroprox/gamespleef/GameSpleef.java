@@ -196,10 +196,11 @@ public class GameSpleef {
                             floors,
                             gameSerialize.spawn,
                             gameSerialize.lobby,
-                            20,
-                            2,
-                            7,
-                            5
+                            gameSerialize.playerLimit,
+                            gameSerialize.campRadius,
+                            gameSerialize.campInterval,
+                            gameSerialize.campPlayers,
+                            gameSerialize.saveInv
                     );
                 }
                 getGameManager().iGames.add(iGame);
@@ -250,7 +251,7 @@ public class GameSpleef {
     }
 
     public enum AdminBuildTypes {
-        NAME, LOBBY, SPAWN, CORNER_FLOOR_1, CORNER_FLOOR_2, CORNER_AREA_1, CORNER_AREA_2, SAVE, STOP, TYPE
+        NAME, LOBBY, SPAWN, CORNER_FLOOR_1, CORNER_FLOOR_2, CORNER_AREA_1, CORNER_AREA_2, SAVE, STOP, TYPE, SAVE_INV
     }
 
     public class GameArgument extends CommandElement {

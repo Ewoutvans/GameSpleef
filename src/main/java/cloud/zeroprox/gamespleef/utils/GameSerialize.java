@@ -30,6 +30,21 @@ public class GameSerialize {
     @Setting("gametype")
     public GameSpleef.GameType gameType;
 
+    @Setting(value = "saveinv", comment = "experimental inventory save option DO NOT USE ON MODDED SERVER")
+    public boolean saveInv;
+
+    @Setting(value = "playerLimit", comment = "maximum player to join this arena")
+    public int playerLimit;
+
+    @Setting(value = "campRadius", comment = "radius to check every interval, if the player has not moved in that radius it will count as camping")
+    public int campRadius;
+
+    @Setting(value = "campInterval", comment = "how many seconds interval to check player are camping")
+    public int campInterval;
+
+    @Setting(value = "campPlayers", comment = "when player count is lower than campPlayers anticamping start checking")
+    public int campPlayers;
+
     public Location corner_floor_1;
     public Location corner_floor_2;
     public Location corner_area_1;

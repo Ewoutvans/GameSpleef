@@ -55,6 +55,11 @@ public class BuildCmd implements CommandExecutor {
             this.gameSerialize.gameType = GameSpleef.GameType.CLASSIC;
             this.gameSerialize.name = name.orElse(new Random().nextLong() + "");
             this.gameSerialize.floors = new ArrayList<>();
+            this.gameSerialize.campInterval = 7;
+            this.gameSerialize.campPlayers = 5;
+            this.gameSerialize.campRadius = 2;
+            this.gameSerialize.saveInv = true;
+            this.gameSerialize.playerLimit = 20;
             showProgress(src);
             return CommandResult.success();
         }
@@ -105,6 +110,9 @@ public class BuildCmd implements CommandExecutor {
             case CORNER_AREA_2:
                 gameSerialize.corner_area_2 = player.getLocation();
                 break;
+            case SAVE_INV:
+                gameSerialize.saveInv = !gameSerialize.saveInv;
+                break;
             default:
         }
         showProgress(src);
@@ -118,6 +126,7 @@ public class BuildCmd implements CommandExecutor {
         } else {
             textArray.add(Text.builder("Name: ").color(TextColors.GRAY).append(Text.builder(gameSerialize.name).color(TextColors.GREEN).build()).build());
             textArray.add(Text.builder("Lobby: ").color(TextColors.GRAY).append(colorVariable(gameSerialize.lobby)).onClick(TextActions.runCommand("/spleef admin build LOBBY")).build());
+            textArray.add(Text.builder("Can join with items in inv: ").color(TextColors.GRAY).append(Text.of(TextColors.GREEN, gameSerialize.saveInv)).append(Text.of(" (disable this on modded)")).onClick(TextActions.runCommand("/spleef admin build SAVE_INV")).build());
             textArray.add(Text.builder("Spawn: ").color(TextColors.GRAY).append(colorVariable(gameSerialize.spawn)).onClick(TextActions.runCommand("/spleef admin build SPAWN")).build());
             if (gameSerialize.corner_area_1 != null && gameSerialize.corner_area_2 != null) {
                 textArray.add(Text.builder("Area: ").color(TextColors.GRAY).append(Text.builder("Okay").color(TextColors.GREEN).build()).build());
