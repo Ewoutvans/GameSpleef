@@ -22,9 +22,10 @@ public class JoinCmd implements CommandExecutor {
         }
         Player player = (Player) src;
 
-        if (player.getInventory().totalItems() != 0) {
+        /*if (player.getInventory().totalItems() != 0) {
             throw new CommandException(Text.of(TextColors.RED, "You need a empty inventory to join"));
         }
+        */
         String gameName = args.<String>getOne(Text.of("game")).orElse(GameSpleef.getGameManager().getDefaultName());
         Optional<IGame> game = GameSpleef.getGameManager().getGame(gameName);
         if (!game.isPresent()) {

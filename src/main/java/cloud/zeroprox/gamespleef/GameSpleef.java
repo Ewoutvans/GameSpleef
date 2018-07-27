@@ -11,6 +11,7 @@ import cloud.zeroprox.gamespleef.game.IGame;
 import cloud.zeroprox.gamespleef.utils.AABBSerialize;
 import cloud.zeroprox.gamespleef.utils.GameSerialize;
 import cloud.zeroprox.gamespleef.utils.TransformWorldSerializer;
+import com.google.common.collect.Maps;
 import com.google.common.reflect.TypeToken;
 import com.google.inject.Inject;
 import ninja.leaping.configurate.ConfigurationNode;
@@ -21,7 +22,8 @@ import ninja.leaping.configurate.objectmapping.ObjectMappingException;
 import ninja.leaping.configurate.objectmapping.serialize.TypeSerializers;
 import org.slf4j.Logger;
 import org.spongepowered.api.Sponge;
-import org.spongepowered.api.command.args.GenericArguments;
+import org.spongepowered.api.command.CommandSource;
+import org.spongepowered.api.command.args.*;
 import org.spongepowered.api.command.spec.CommandSpec;
 import org.spongepowered.api.config.DefaultConfig;
 import org.spongepowered.api.entity.Transform;
@@ -33,6 +35,7 @@ import org.spongepowered.api.text.Text;
 import org.spongepowered.api.util.AABB;
 import org.spongepowered.api.world.World;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -61,7 +64,9 @@ public class GameSpleef {
 
     CommandSpec joinCmd = CommandSpec.builder()
             .description(Text.of("Join a game"))
-            .arguments(GenericArguments.optional(GenericArguments.string(Text.of("game"))))
+            .arguments(
+                    GenericArguments.optional(new GameArgument(Text.of("game")))
+            )
             .permission("gamespleef.join")
             .executor(new JoinCmd())
             .build();
@@ -84,13 +89,17 @@ public class GameSpleef {
 
     CommandSpec adminToggleCmd = CommandSpec.builder()
             .description(Text.of("Toggle arena"))
-            .arguments(GenericArguments.onlyOne(GenericArguments.string(Text.of("game"))))
+            .arguments(
+                    GenericArguments.optional(new GameArgument(Text.of("game")))
+            )
             .executor(new DisableCmd())
             .build();
 
     CommandSpec adminRemoveCmd = CommandSpec.builder()
             .description(Text.of("Remove arena"))
-            .arguments(GenericArguments.onlyOne(GenericArguments.string(Text.of("game"))))
+            .arguments(
+                    GenericArguments.optional(new GameArgument(Text.of("game")))
+            )
             .executor(new RemoveCmd())
             .build();
 
@@ -242,6 +251,28 @@ public class GameSpleef {
 
     public enum AdminBuildTypes {
         NAME, LOBBY, SPAWN, CORNER_FLOOR_1, CORNER_FLOOR_2, CORNER_AREA_1, CORNER_AREA_2, SAVE, STOP, TYPE
+    }
+
+    public class GameArgument extends CommandElement {
+
+        protected GameArgument(@Nullable Text key) {
+            super(key);
+        }
+
+        @Nullable
+        @Override
+        protected Object parseValue(CommandSource source, CommandArgs args) throws ArgumentParseException {
+            return args.next();
+        }
+
+        @Override
+        public List<String> complete(CommandSource src, CommandArgs args, CommandContext context) {
+            List<String> games = new ArrayList<>();
+            for (IGame iGame : GameSpleef.getGameManager().iGames) {
+                games.add(iGame.getName());
+            }
+            return games;
+        }
     }
 
 }

@@ -12,6 +12,8 @@ import org.spongepowered.api.effect.potion.PotionEffectTypes;
 import org.spongepowered.api.entity.Transform;
 import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.entity.living.player.gamemode.GameModes;
+import org.spongepowered.api.item.inventory.Inventory;
+import org.spongepowered.api.item.inventory.ItemStack;
 import org.spongepowered.api.item.inventory.entity.PlayerInventory;
 import org.spongepowered.api.scheduler.Task;
 import org.spongepowered.api.text.Text;
@@ -39,6 +41,7 @@ public class GameClassic implements IGame {
     Map<UUID, PlayerStats> activePlayers = new HashMap<>();
     Map<UUID, PlayerStats> inactivePlayers = new HashMap<>();
     Map<UUID, Vector3i> playerPos = new HashMap<>();
+    Map<UUID, LinkedHashSet<Optional<ItemStack>>> inventories = new HashMap<>();
     HashSet<UUID> campWarnings = new HashSet<>();
 
     public GameClassic(String name, AABB area, List<AABB> floors, Transform<World> spawn, Transform<World> lobby, int limit, int campRadius, int campInterval, int campPlayers) {
@@ -141,14 +144,15 @@ public class GameClassic implements IGame {
         player.offer(Keys.FIRE_TICKS, 0);
         player.offer(Keys.POTION_EFFECTS, Arrays.asList(
                 PotionEffect.builder().amplifier(5).duration(20 * 60 * 60 * 60).particles(false).potionType(PotionEffectTypes.RESISTANCE).build(),
-                PotionEffect.builder().amplifier(1).duration(20 * 60 * 60 * 60).particles(false).potionType(PotionEffectTypes.WATER_BREATHING).build(),
-                PotionEffect.builder().amplifier(1).duration(20 * 60 * 60 * 60).particles(false).potionType(PotionEffectTypes.NIGHT_VISION).build()));
+                PotionEffect.builder().amplifier(1).duration(20 * 60 * 60 * 60).particles(false).potionType(PotionEffectTypes.SATURATION).build()));
         player.sendMessage(Text.of(TextColors.GREEN, "You have joined the game"));
+
+
         ((PlayerInventory) player.getInventory()).getHotbar().setSelectedSlotIndex(0);
 
-        this.activePlayers.put(player.getUniqueId(), new PlayerStats(player.getUniqueId()));
-
         player.setTransform(this.getSpawn());
+
+        this.activePlayers.put(player.getUniqueId(), new PlayerStats(player.getUniqueId()));
 
         if (this.activePlayers.size() >= 2) {
             if (this.mode == GameSpleef.Mode.READY) {
@@ -218,7 +222,7 @@ public class GameClassic implements IGame {
             this.killPlayer(player);
         } else {
             this.activePlayers.remove(player.getUniqueId());
-            player.setTransform(this.getLobby());
+            player.setTransform(this.getSpawn());
             this.activePlayers.put(player.getUniqueId(), new PlayerStats(player.getUniqueId()));
         }
     }
