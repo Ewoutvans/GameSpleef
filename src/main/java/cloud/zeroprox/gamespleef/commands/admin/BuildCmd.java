@@ -13,11 +13,9 @@ import org.spongepowered.api.service.pagination.PaginationList;
 import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.action.TextActions;
 import org.spongepowered.api.text.format.TextColors;
+import org.spongepowered.api.util.AABB;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Random;
+import java.util.*;
 
 public class BuildCmd implements CommandExecutor {
 
@@ -60,6 +58,9 @@ public class BuildCmd implements CommandExecutor {
             this.gameSerialize.campRadius = 2;
             this.gameSerialize.saveInv = true;
             this.gameSerialize.playerLimit = 20;
+            this.gameSerialize.winningCommand = Arrays.asList("give %winner% minecraft:diamond 1", "say %winner% got a diamond for winning spleef in arena %game%!");
+            this.gameSerialize.winningMinPlayers = 2;
+            this.gameSerialize.winningCooldown = 1;
             showProgress(src);
             return CommandResult.success();
         }
@@ -79,29 +80,13 @@ public class BuildCmd implements CommandExecutor {
             case CORNER_FLOOR_1:
                 gameSerialize.corner_floor_1 = player.getLocation();
                 if (gameSerialize.corner_floor_2 != null) {
-                    gameSerialize.floors.add(new AABBSerialize(
-                            gameSerialize.corner_floor_1.getBlockX(),
-                            gameSerialize.corner_floor_1.getBlockY(),
-                            gameSerialize.corner_floor_1.getBlockZ(),
-                            gameSerialize.corner_floor_2.getBlockX(),
-                            gameSerialize.corner_floor_2.getBlockY(),
-                            gameSerialize.corner_floor_2.getBlockZ()));
-                    gameSerialize.corner_floor_1 = null;
-                    gameSerialize.corner_floor_2 = null;
+                    trySavingFloor(src);
                 }
                 break;
             case CORNER_FLOOR_2:
                 gameSerialize.corner_floor_2 = player.getLocation();
                 if (gameSerialize.corner_floor_1 != null) {
-                    gameSerialize.floors.add(new AABBSerialize(
-                            gameSerialize.corner_floor_1.getBlockX(),
-                            gameSerialize.corner_floor_1.getBlockY(),
-                            gameSerialize.corner_floor_1.getBlockZ(),
-                            gameSerialize.corner_floor_2.getBlockX(),
-                            gameSerialize.corner_floor_2.getBlockY(),
-                            gameSerialize.corner_floor_2.getBlockZ()));
-                    gameSerialize.corner_floor_1 = null;
-                    gameSerialize.corner_floor_2 = null;
+                    trySavingFloor(src);
                 }
                 break;
             case CORNER_AREA_1:
@@ -117,6 +102,48 @@ public class BuildCmd implements CommandExecutor {
         }
         showProgress(src);
         return CommandResult.empty();
+    }
+
+    private void trySavingFloor(CommandSource src) {
+        try {
+            // try making the AABB to see if it was setup correctly
+            AABB aabb = new AABB(gameSerialize.corner_floor_1.getBlockX(),
+                    gameSerialize.corner_floor_1.getBlockY(),
+                    gameSerialize.corner_floor_1.getBlockZ(),
+                    gameSerialize.corner_floor_2.getBlockX(),
+                    gameSerialize.corner_floor_2.getBlockY(),
+                    gameSerialize.corner_floor_2.getBlockZ());
+
+            gameSerialize.floors.add(new AABBSerialize(
+                    gameSerialize.corner_floor_1.getBlockX(),
+                    gameSerialize.corner_floor_1.getBlockY(),
+                    gameSerialize.corner_floor_1.getBlockZ(),
+                    gameSerialize.corner_floor_2.getBlockX(),
+                    gameSerialize.corner_floor_2.getBlockY(),
+                    gameSerialize.corner_floor_2.getBlockZ()));
+            gameSerialize.corner_floor_1 = null;
+            gameSerialize.corner_floor_2 = null;
+
+        } catch (Exception e) {
+            if (e instanceof IllegalArgumentException) {
+                switch (e.getMessage()) {
+                    case "The box is degenerate on x":
+                        src.sendMessage(Text.of("The floor is not correctly setup, you have selected the same 'X' location for both corners."));
+                        break;
+                    case "The box is degenerate on y":
+                        src.sendMessage(Text.of("The floor is not correctly setup, you have selected the same 'Y' location for both corners. Try going 1 block lower."));
+                        break;
+                    case "The box is degenerate on z":
+                        src.sendMessage(Text.of("The floor is not correctly setup, you have selected the same 'Z' location for both corners."));
+                        break;
+                    default:
+                        src.sendMessage(Text.of("Unknown problem with making the floor region has occurred."));
+                        break;
+                }
+            }
+            gameSerialize.corner_floor_1 = null;
+            gameSerialize.corner_floor_2 = null;
+        }
     }
 
     private void showProgress(CommandSource src) {

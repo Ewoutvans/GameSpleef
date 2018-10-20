@@ -52,5 +52,7 @@ public interface IGame {
 
     void resetGame();
 
+    void winPlayer(Player player);
+
     boolean checkPlayerMoved(Optional<Player> player);
 }

@@ -45,6 +45,15 @@ public class GameSerialize {
     @Setting(value = "campPlayers", comment = "when player count is lower than campPlayers anticamping start checking")
     public int campPlayers;
 
+    @Setting(value = "winningCommand", comment = "Runs this command from console when someone wins. %winner% is replaced with the name of the winner, %game% is replace with the gamename")
+    public List<String> winningCommand;
+
+    @Setting(value = "winningMinPlayers", comment = "Only run command when this many players where in the game (prevents users farming with 2 accounts)")
+    public int winningMinPlayers;
+
+    @Setting(value = "winningCooldown", comment = "Cooldown for the player to execute the command (does not save to disk) in minutes, user gets cooldown global, time is per game")
+    public int winningCooldown;
+
     public Location corner_floor_1;
     public Location corner_floor_2;
     public Location corner_area_1;

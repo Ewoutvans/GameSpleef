@@ -10,8 +10,8 @@ import cloud.zeroprox.gamespleef.game.GameManager;
 import cloud.zeroprox.gamespleef.game.IGame;
 import cloud.zeroprox.gamespleef.utils.AABBSerialize;
 import cloud.zeroprox.gamespleef.utils.GameSerialize;
+import cloud.zeroprox.gamespleef.utils.MessageManager;
 import cloud.zeroprox.gamespleef.utils.TransformWorldSerializer;
-import com.google.common.collect.Maps;
 import com.google.common.reflect.TypeToken;
 import com.google.inject.Inject;
 import ninja.leaping.configurate.ConfigurationNode;
@@ -25,6 +25,7 @@ import org.spongepowered.api.Sponge;
 import org.spongepowered.api.command.CommandSource;
 import org.spongepowered.api.command.args.*;
 import org.spongepowered.api.command.spec.CommandSpec;
+import org.spongepowered.api.config.ConfigDir;
 import org.spongepowered.api.config.DefaultConfig;
 import org.spongepowered.api.entity.Transform;
 import org.spongepowered.api.event.Listener;
@@ -47,19 +48,24 @@ import java.util.List;
 public class GameSpleef {
 
     @Inject
-    private Logger logger;
+    public Logger logger;
     private static GameSpleef instance;
     private static GameManager gameManager;
+    private static MessageManager messageManager;
 
     @Inject
-    @DefaultConfig(sharedRoot = true)
+    @DefaultConfig(sharedRoot = false)
     private Path defaultConfig;
 
     @Inject
     @DefaultConfig(sharedRoot = true)
-    private ConfigurationLoader<CommentedConfigurationNode> configManager;
+    private ConfigurationLoader<CommentedConfigurationNode> configManagerDefaultConfig;
 
-    private ConfigurationNode rootNode;
+    @Inject
+    @ConfigDir(sharedRoot = false)
+    private Path privateConfigDir;
+
+    private ConfigurationNode rootNodeDefaultConfig;
 
 
     CommandSpec joinCmd = CommandSpec.builder()
@@ -144,10 +150,11 @@ public class GameSpleef {
 
         gameManager = new GameManager();
         instance = this;
-        configManager = HoconConfigurationLoader.builder().setPath(defaultConfig).build();
+        configManagerDefaultConfig = HoconConfigurationLoader.builder().setPath(defaultConfig).build();
         try {
-            rootNode = configManager.load();
+            rootNodeDefaultConfig = configManagerDefaultConfig.load();
             loadConfig();
+            loadMessages();
         } catch(IOException e) {
         } catch (ObjectMappingException e) {
             e.printStackTrace();
@@ -162,26 +169,36 @@ public class GameSpleef {
         return gameManager;
     }
 
+    public static MessageManager mM() {
+        return messageManager;
+    }
+
 
     @Listener
     public void onGameReload(GameReloadEvent event) {
         try {
+            rootNodeDefaultConfig = configManagerDefaultConfig.load();
             loadConfig();
+            loadMessages();
         } catch (IOException e) {
         } catch (ObjectMappingException e) {
         }
     }
 
+    private void loadMessages() {
+        messageManager = new MessageManager(privateConfigDir);
+    }
+
     private void loadConfig() throws IOException, ObjectMappingException {
-        if (rootNode.getNode("areas").isVirtual()) {
+        if (rootNodeDefaultConfig.getNode("areas").isVirtual()) {
             logger.info("Creating configuration");
 
-            rootNode.getNode("areas").setValue(new TypeToken<List<GameSerialize>>(){}, Arrays.asList());
-            configManager.save(rootNode);
+            rootNodeDefaultConfig.getNode("areas").setValue(new TypeToken<List<GameSerialize>>(){}, Arrays.asList());
+            configManagerDefaultConfig.save(rootNodeDefaultConfig);
             loadConfig();
         } else {
             getGameManager().iGames.clear();
-            List<GameSerialize> gameSerializeList = rootNode.getNode("areas").getList(TypeToken.of(GameSerialize.class));
+            List<GameSerialize> gameSerializeList = rootNodeDefaultConfig.getNode("areas").getList(TypeToken.of(GameSerialize.class));
             for (GameSerialize gameSerialize : gameSerializeList) {
                 IGame iGame = null;
 
@@ -200,7 +217,10 @@ public class GameSpleef {
                             gameSerialize.campRadius,
                             gameSerialize.campInterval,
                             gameSerialize.campPlayers,
-                            gameSerialize.saveInv
+                            gameSerialize.saveInv,
+                            gameSerialize.winningCommand,
+                            gameSerialize.winningMinPlayers,
+                            gameSerialize.winningCooldown
                     );
                 }
                 getGameManager().iGames.add(iGame);
@@ -211,12 +231,12 @@ public class GameSpleef {
 
     public void addArena(GameSerialize gameSerialize) {
         try {
-            List<GameSerialize> gameSerializeList = rootNode.getNode("areas").getList(TypeToken.of(GameSerialize.class));
+            List<GameSerialize> gameSerializeList = rootNodeDefaultConfig.getNode("areas").getList(TypeToken.of(GameSerialize.class));
             List<GameSerialize> gameList = new ArrayList<>();
             gameList.addAll(gameSerializeList);
             gameList.add(gameSerialize);
-            rootNode.getNode("areas").setValue(new TypeToken<List<GameSerialize>>(){}, gameList);
-            configManager.save(rootNode);
+            rootNodeDefaultConfig.getNode("areas").setValue(new TypeToken<List<GameSerialize>>(){}, gameList);
+            configManagerDefaultConfig.save(rootNodeDefaultConfig);
             loadConfig();
         } catch (ObjectMappingException e) {
             e.printStackTrace();
@@ -227,12 +247,12 @@ public class GameSpleef {
 
     public void removeArena(IGame iGame) {
         try {
-            List<GameSerialize> gameSerializeList = rootNode.getNode("areas").getList(TypeToken.of(GameSerialize.class));
+            List<GameSerialize> gameSerializeList = rootNodeDefaultConfig.getNode("areas").getList(TypeToken.of(GameSerialize.class));
             List<GameSerialize> gameList = new ArrayList<>();
             gameList.addAll(gameSerializeList);
             gameList.removeIf(gameSerialize -> gameSerialize.name.equalsIgnoreCase(iGame.getName()));
-            rootNode.getNode("areas").setValue(new TypeToken<List<GameSerialize>>(){}, gameList);
-            configManager.save(rootNode);
+            rootNodeDefaultConfig.getNode("areas").setValue(new TypeToken<List<GameSerialize>>(){}, gameList);
+            configManagerDefaultConfig.save(rootNodeDefaultConfig);
             loadConfig();
         } catch (ObjectMappingException e) {
             e.printStackTrace();

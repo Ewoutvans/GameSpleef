@@ -1,5 +1,6 @@
 package cloud.zeroprox.gamespleef.commands;
 
+import cloud.zeroprox.gamespleef.GameSpleef;
 import org.spongepowered.api.command.CommandResult;
 import org.spongepowered.api.command.CommandSource;
 import org.spongepowered.api.command.args.CommandContext;
@@ -13,7 +14,7 @@ public class HelpCmd implements CommandExecutor {
     @Override
     public CommandResult execute(CommandSource src, CommandContext args) {
         PaginationList.builder()
-                .title(Text.of(TextColors.GREEN, "Game KingOfTheWater commands"))
+                .title(GameSpleef.mM().SPLEEF_HELP_TITLE.apply().build())
                 .padding(Text.of(TextColors.GOLD, "="))
                 .contents(
                         Text.builder("/spleef join ").color(TextColors.GREEN).append(Text.of(TextColors.WHITE, "[area]")).onClick(TextActions.suggestCommand("/spleef join ")).build(),

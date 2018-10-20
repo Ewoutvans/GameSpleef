@@ -24,7 +24,7 @@ public class ListCmd implements CommandExecutor {
         }
 
         PaginationList.builder()
-                .title(Text.of(TextColors.GREEN, "Spleef Arena's"))
+                .title(GameSpleef.mM().SPLEEF_ARENAS.apply().build())
                 .padding(Text.of(TextColors.GOLD, "="))
                 .contents(arenas)
                 .build()

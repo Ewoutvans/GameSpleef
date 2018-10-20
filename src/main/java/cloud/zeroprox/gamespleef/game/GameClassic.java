@@ -3,6 +3,7 @@ package cloud.zeroprox.gamespleef.game;
 import cloud.zeroprox.gamespleef.GameSpleef;
 import cloud.zeroprox.gamespleef.stats.PlayerStats;
 import com.flowpowered.math.vector.Vector3i;
+import com.google.common.collect.ImmutableMap;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.block.BlockSnapshot;
 import org.spongepowered.api.block.BlockTypes;
@@ -34,8 +35,9 @@ public class GameClassic implements IGame {
     private UUID world;
     private AABB area;
     private List<AABB> floors;
+    private List<String> winningCommand;
     private Transform<World> spawn, lobby;
-    private int limit, lowestY, campRadius, campInterval, campPlayers;
+    private int limit, lowestY, campRadius, campInterval, campPlayers, winningMinPlayers, winningCooldown;
     private boolean saveInventories;
     private HashMap<BlockSnapshot, UUID> brokenBlocks;
     private Task countTask, campTask;
@@ -45,7 +47,7 @@ public class GameClassic implements IGame {
     Map<UUID, List<Optional<ItemStack>>> inventories = new HashMap<>();
     HashSet<UUID> campWarnings = new HashSet<>();
 
-    public GameClassic(String name, AABB area, List<AABB> floors, Transform<World> spawn, Transform<World> lobby, int limit, int campRadius, int campInterval, int campPlayers, boolean saveInventories) {
+    public GameClassic(String name, AABB area, List<AABB> floors, Transform<World> spawn, Transform<World> lobby, int limit, int campRadius, int campInterval, int campPlayers, boolean saveInventories, List<String> winningCommand, int winningMinPlayers, int winningCooldown) {
         this.name = name;
         this.area = area;
         this.floors = floors;
@@ -66,6 +68,9 @@ public class GameClassic implements IGame {
         this.campInterval = campInterval;
         this.campPlayers = campPlayers;
         this.saveInventories = saveInventories;
+        this.winningCommand = winningCommand;
+        this.winningMinPlayers = winningMinPlayers;
+        this.winningCooldown = winningCooldown;
     }
 
     @Override
@@ -127,19 +132,19 @@ public class GameClassic implements IGame {
     @Override
     public void addPlayer(Player player) {
         if (this.activePlayers.size() >= this.limit) {
-            player.sendMessage(Text.of(TextColors.RED, "You can't join, the game is at a limit."));
+            player.sendMessage(GameSpleef.mM().JOIN_GAME_FULL.apply().build());
             return;
         }
         if (this.mode == GameSpleef.Mode.DISABLED) {
-            player.sendMessage(Text.of(TextColors.RED, "You can't join the game is not ready."));
+            player.sendMessage(GameSpleef.mM().GAME_NOT_READY.apply().build());
             return;
         }
         if (this.mode == GameSpleef.Mode.PLAYING) {
-            player.sendMessage(Text.of(TextColors.RED, "You can't join the game is already started."));
+            player.sendMessage(GameSpleef.mM().GAME_ALREADY_STARTED.apply().build());
             return;
         }
         if (this.saveInventories == false && player.getInventory().totalItems() != 0) {
-            player.sendMessage(Text.of(TextColors.RED, "You need a empty inventory to join."));
+            player.sendMessage(GameSpleef.mM().EMPTY_INV_TO_JOIN.apply().build());
             return;
         }
         player.health().set(20D);
@@ -151,7 +156,7 @@ public class GameClassic implements IGame {
         player.offer(Keys.POTION_EFFECTS, Arrays.asList(
                 PotionEffect.builder().amplifier(5).duration(20 * 60 * 60 * 60).particles(false).potionType(PotionEffectTypes.RESISTANCE).build(),
                 PotionEffect.builder().amplifier(1).duration(20 * 60 * 60 * 60).particles(false).potionType(PotionEffectTypes.SATURATION).build()));
-        player.sendMessage(Text.of(TextColors.GREEN, "You have joined the game"));
+        player.sendMessage(GameSpleef.mM().YOU_HAVE_JOINED.apply().build());
 
         if (this.saveInventories) {
             List<Optional<ItemStack>> items = new ArrayList<>();
@@ -182,22 +187,7 @@ public class GameClassic implements IGame {
         if (this.activePlayers.size() <= 1) {
             resetGame();
         }
-        this.activePlayers.remove(player.getUniqueId());
-        player.getInventory().clear();
-
-        if (this.saveInventories) {
-            List<Optional<ItemStack>> items = this.inventories.get(player.getUniqueId());
-            int index = 0;
-            for (Inventory slot : player.getInventory().slots())  {
-                slot.set(items.get(index).orElse(ItemStack.empty()));
-                index++;
-            }
-        }
-
-        player.offer(Keys.GAME_MODE, GameModes.SURVIVAL);
-        player.offer(Keys.POTION_EFFECTS, new ArrayList<>());
-        player.setScoreboard(null);
-        player.setTransform(this.getLobby());
+        resetPlayer(player);
     }
 
     @Override
@@ -261,11 +251,23 @@ public class GameClassic implements IGame {
                     Player killer = Sponge.getServer().getPlayer(this.brokenBlocks.get(bs)).get();
                     getPlayerStats(killer).get().addKnockout(player);
                     player.sendMessage(
-                            Text.of(TextColors.GRAY, "[", TextColors.RED, "SPLEEF", TextColors.GRAY, "] You have been knocked out by ", TextColors.RED, killer.getName(), TextColors.GRAY, ".")
-                    );
+                            GameSpleef.mM().SPLEEF.apply().build().concat(
+                                    GameSpleef.mM().YOU_HAVE_BEEN_KNOCKED_BY.apply(ImmutableMap.of("killer", killer.getName())).build()));
                 }
             }
         }
+        resetPlayer(player);
+        if (this.activePlayers.size() <= 1) {
+            winPlayer(Sponge.getServer().getPlayer(this.activePlayers.keySet().iterator().next()).get());
+        }
+        if (this.activePlayers.size() <= campPlayers) {
+            if (campTask == null) {
+                campTask = Task.builder().execute(new CampTimerTask()).interval(this.campInterval, TimeUnit.SECONDS).name("Game timer").submit(GameSpleef.getInstance());
+            }
+        }
+    }
+
+    private void resetPlayer(Player player) {
         this.inactivePlayers.put(player.getUniqueId(), this.activePlayers.get(player.getUniqueId()));
         this.activePlayers.remove(player.getUniqueId());
         player.getInventory().clear();
@@ -275,34 +277,40 @@ public class GameClassic implements IGame {
         player.offer(Keys.HEALTH, player.get(Keys.MAX_HEALTH).get());
         player.setScoreboard(null);
         player.setTransform(this.getLobby());
-        if (this.activePlayers.size() <= 1) {
-            Sponge.getServer().getBroadcastChannel().send(
-                    Text.of(TextColors.GRAY, "[", TextColors.GOLD, "SPLEEF", TextColors.GRAY, "] ", TextColors.GOLD, Sponge.getServer().getPlayer(this.activePlayers.keySet().iterator().next()).get().getName(), " won spleef on arena ", this.name)
-            );
-            resetGame();
-        }
-        if (this.activePlayers.size() <= campPlayers) {
-            if (campTask == null) {
-                campTask = Task.builder().execute(new CampTimerTask()).interval(this.campInterval, TimeUnit.SECONDS).name("Game timer").submit(GameSpleef.getInstance());
+        if (this.saveInventories) {
+            List<Optional<ItemStack>> items = this.inventories.get(player.getUniqueId());
+            int index = 0;
+            for (Inventory slot : player.getInventory().slots())  {
+                slot.set(items.get(index).orElse(ItemStack.empty()));
+                index++;
             }
         }
+    }
+
+    @Override
+    public void winPlayer(Player player) {
+        Sponge.getServer().getBroadcastChannel().send(GameSpleef.mM().SPLEEF.apply().build().concat(GameSpleef.mM().PLAYER_WON_BROADCAST.apply(ImmutableMap.of("winner", player.getName(), "gamename", this.name)).build()));
+
+        if (this.inactivePlayers.size() >= this.winningMinPlayers) {
+            Sponge.getScheduler().createTaskBuilder().execute(() -> {
+                if (!GameSpleef.getGameManager().hasCooldown(player.getUniqueId(), this.winningCooldown)) {
+                    for (String cmd : this.winningCommand) {
+                        Sponge.getCommandManager().process(Sponge.getServer().getConsole(), cmd.replace("%winner%", player.getName()).replace("%game%", this.name));
+                    }
+                    GameSpleef.getGameManager().setCooldown(player.getUniqueId());
+                }
+            }).delay(1, TimeUnit.SECONDS).submit(GameSpleef.getInstance());
+        }
+
+        resetGame();
     }
 
     @Override
     public void resetGame() {
         if (this.mode == GameSpleef.Mode.PLAYING) {
             for (UUID playerUid : this.activePlayers.keySet()) {
-                Player player = Sponge.getServer().getPlayer(playerUid).get();
-                player.getInventory().clear();
-                player.offer(Keys.GAME_MODE, GameModes.SURVIVAL);
-                player.offer(Keys.POTION_EFFECTS, new ArrayList<>());
-                player.offer(Keys.FOOD_LEVEL, 20);
-                player.offer(Keys.HEALTH, player.get(Keys.MAX_HEALTH).get());
-                player.setScoreboard(null);
-                player.setTransform(this.getLobby());
-                this.inactivePlayers.put(playerUid, this.activePlayers.get(playerUid));
+                resetPlayer(Sponge.getServer().getPlayer(playerUid).get());
             }
-
 
             for (BlockSnapshot bs : this.brokenBlocks.keySet()) {
                 bs.restore(true, BlockChangeFlags.NONE);
@@ -316,8 +324,8 @@ public class GameClassic implements IGame {
             for (UUID playerUid : this.inactivePlayers.keySet()) {
                 double k = this.inactivePlayers.get(playerUid).getKnockouts().size();
                 Sponge.getServer().getPlayer(playerUid).get().sendMessage(
-                        Text.of(TextColors.GRAY, "[", TextColors.RED, "SPLEEF", TextColors.GRAY, "] You knocked out ", TextColors.RED, (int) k, TextColors.GRAY, " (", (int)(k/(this.inactivePlayers.size()-1) * 100.0), "%) players")
-                );
+                        GameSpleef.mM().SPLEEF.apply().build().concat(
+                                GameSpleef.mM().YOU_KNOCKED_OUT.apply(ImmutableMap.of("amount", (int)k, "percent", (int)(k/(this.inactivePlayers.size()-1) * 100.0))).build()));
                 if (k > max_kills) {
                     max_kills = k;
                     max_kills_player = playerUid;
@@ -333,8 +341,8 @@ public class GameClassic implements IGame {
             for (UUID playerUid : this.inactivePlayers.keySet()) {
                 double i = this.inactivePlayers.get(playerUid).getBlocksBroken();
                 Sponge.getServer().getPlayer(playerUid).get().sendMessage(
-                        Text.of(TextColors.GRAY, "[", TextColors.RED, "SPLEEF", TextColors.GRAY, "] You broke ", TextColors.RED, (int) i, TextColors.GRAY, " blocks (", (int)(i/totalBlocks * 100.0), "%)")
-                );
+                        GameSpleef.mM().SPLEEF.apply().build().concat(
+                                GameSpleef.mM().YOU_BROKE.apply(ImmutableMap.of("amount", (int) i, "percent", (int)(i/totalBlocks * 100.0))).build()));
                 if (i > max_breaks) {
                     max_breaks = i;
                     max_breaks_player = playerUid;
@@ -346,10 +354,12 @@ public class GameClassic implements IGame {
                         Text.of(TextColors.GRAY, "-------------------------------------------------")
                 );
                 Sponge.getServer().getPlayer(playerUid).get().sendMessage(
-                        Text.of(TextColors.GRAY, "Most knockouts by ", TextColors.RED, Sponge.getServer().getPlayer(max_kills_player).get().getName(), TextColors.GRAY, " (", (int)max_kills, ", ", (int)(max_kills/(this.inactivePlayers.size()-1)*100.0), "%)")
+                        GameSpleef.mM().STAT_MOST_KNOCKED.apply(ImmutableMap.of(
+                        "player", Sponge.getServer().getPlayer(max_kills_player).get().getName(), "amount", (int)max_kills, "percent", (int)(max_kills/(this.inactivePlayers.size()-1)*100.0))).build()
                 );
                 Sponge.getServer().getPlayer(playerUid).get().sendMessage(
-                        Text.of(TextColors.GRAY, "Most blocks broke by ", TextColors.RED, Sponge.getServer().getPlayer(max_breaks_player).get().getName(), TextColors.GRAY, " (", (int)max_breaks, ", ", (int)(max_breaks/totalBlocks*100.0), "%)")
+                        GameSpleef.mM().STAT_MOST_BREAKS.apply(ImmutableMap.of(
+                        "player", Sponge.getServer().getPlayer(max_breaks_player).get().getName(), "amount", (int)max_breaks, "percent", (int)(max_breaks/totalBlocks*100.0))).build()
                 );
                 Sponge.getServer().getPlayer(playerUid).get().sendMessage(
                         Text.of(TextColors.GRAY, "-------------------------------------------------")
@@ -396,14 +406,14 @@ public class GameClassic implements IGame {
                 if (!checkPlayerMoved(Sponge.getServer().getPlayer(playerUid))) {
                     temp.add(playerUid);
                     if (campWarnings.contains(playerUid)) {
-                        player.sendMessage(Text.of(TextColors.DARK_RED, "Kicked for camping!"));
+                        player.sendMessage(GameSpleef.mM().KICKED_FOR_CAMPING.apply().build());
                         killPlayer(player);
                         if (activePlayers.size() <= 1) {
                             campWarnings.clear();
                             return;
                         }
                     } else {
-                        player.sendMessage(Text.of(TextColors.DARK_RED, "WARNING: ", TextColors.GOLD, "Possible camping detected! Move to keep from being kicked!"));
+                        player.sendMessage(GameSpleef.mM().POSSIBLE_CAMPING.apply().build());
                     }
                 }
             }
@@ -422,8 +432,7 @@ public class GameClassic implements IGame {
             if (seconds % 5 == 0 || seconds < 6) {
                 for (UUID playerUid : activePlayers.keySet()) {
                     Sponge.getServer().getPlayer(playerUid).ifPresent(player -> player.sendMessage(
-                            Text.of(TextColors.GRAY, "[", TextColors.RED, "SPLEEF", TextColors.GRAY, "] Game starting in ", TextColors.RED, seconds, TextColors.GRAY, " seconds.")
-                    ));
+                            GameSpleef.mM().SPLEEF.apply().build().concat(GameSpleef.mM().STARTING.apply(ImmutableMap.of("seconds", seconds)).build())));
                 }
             }
             if (seconds <= 0) {

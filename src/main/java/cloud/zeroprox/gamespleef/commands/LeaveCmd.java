@@ -17,13 +17,13 @@ public class LeaveCmd implements CommandExecutor {
     @Override
     public CommandResult execute(CommandSource src, CommandContext args) throws CommandException {
         if (!(src instanceof Player)) {
-            throw new CommandException(Text.of(TextColors.RED, "You need to be a player to join a game"));
+            throw new CommandException(GameSpleef.mM().NEED_TO_BE_PLAYER.apply().build());
         }
         Player player = (Player) src;
 
         Optional<IGame> game = GameSpleef.getGameManager().getPlayerGame(player);
         if (!game.isPresent()) {
-            throw new CommandException(Text.of(TextColors.RED, "You are not in a game"));
+            throw new CommandException(GameSpleef.mM().YOU_ARE_NOT_INGAME.apply().build());
         }
 
         game.get().leavePlayer(player, args.hasAny("f"));
