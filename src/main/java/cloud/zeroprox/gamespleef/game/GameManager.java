@@ -2,13 +2,13 @@ package cloud.zeroprox.gamespleef.game;
 
 import org.spongepowered.api.entity.living.player.Player;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 public class GameManager {
 
     public List<IGame> iGames = new ArrayList<>();
+    private HashMap<UUID, Long> winningCooldowns = new HashMap<>();
 
     public boolean isPlayerActive(Player player) {
         return getPlayerGame(player).isPresent();
@@ -28,5 +28,13 @@ public class GameManager {
 
     public Optional<IGame> getGameFromRegion(Player player) {
         return iGames.stream().filter(game -> game.isInsideArea(player.getLocation())).findFirst();
+    }
+
+    public boolean hasCooldown(UUID uniqueId, int winningCooldown) {
+        return winningCooldowns.containsKey(uniqueId) && winningCooldowns.get(uniqueId) + TimeUnit.MINUTES.toMillis(winningCooldown) >= System.currentTimeMillis();
+    }
+
+    public void setCooldown(UUID uniqueId) {
+        winningCooldowns.put(uniqueId, System.currentTimeMillis());
     }
 }

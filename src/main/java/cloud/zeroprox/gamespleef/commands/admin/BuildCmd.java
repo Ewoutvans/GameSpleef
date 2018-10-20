@@ -14,10 +14,7 @@ import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.action.TextActions;
 import org.spongepowered.api.text.format.TextColors;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Random;
+import java.util.*;
 
 public class BuildCmd implements CommandExecutor {
 
@@ -60,6 +57,9 @@ public class BuildCmd implements CommandExecutor {
             this.gameSerialize.campRadius = 2;
             this.gameSerialize.saveInv = true;
             this.gameSerialize.playerLimit = 20;
+            this.gameSerialize.winningCommand = Arrays.asList("give %winner% minecraft:diamond 1", "say %winner% got a diamond for winning spleef in arena %game%!");
+            this.gameSerialize.winningMinPlayers = 2;
+            this.gameSerialize.winningCooldown = 1;
             showProgress(src);
             return CommandResult.success();
         }

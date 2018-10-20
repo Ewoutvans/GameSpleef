@@ -2,6 +2,7 @@ package cloud.zeroprox.gamespleef.commands;
 
 import cloud.zeroprox.gamespleef.GameSpleef;
 import cloud.zeroprox.gamespleef.game.IGame;
+import com.google.common.collect.ImmutableMap;
 import org.spongepowered.api.command.CommandException;
 import org.spongepowered.api.command.CommandResult;
 import org.spongepowered.api.command.CommandSource;
@@ -18,19 +19,16 @@ public class JoinCmd implements CommandExecutor {
     @Override
     public CommandResult execute(CommandSource src, CommandContext args) throws CommandException {
         if (!(src instanceof Player)) {
-            throw new CommandException(Text.of(TextColors.RED, "You need to be a player to join a game"));
+            throw new CommandException(GameSpleef.mM().NEED_TO_BE_PLAYER.apply().build());
         }
         Player player = (Player) src;
-
-        /*if (player.getInventory().totalItems() != 0) {
-            throw new CommandException(Text.of(TextColors.RED, "You need a empty inventory to join"));
+        if (GameSpleef.getGameManager().getPlayerGame(player).isPresent()) {
+             throw new CommandException(GameSpleef.mM().YOU_ALREADY_PLAYING.apply().build());
         }
-        */
         String gameName = args.<String>getOne(Text.of("game")).orElse(GameSpleef.getGameManager().getDefaultName());
         Optional<IGame> game = GameSpleef.getGameManager().getGame(gameName);
         if (!game.isPresent()) {
-            src.sendMessage(Text.of(TextColors.RED, "No game found for name ", gameName));
-            return CommandResult.empty();
+            throw new CommandException(GameSpleef.mM().GAME_NAME_NOT_FOUND.apply(ImmutableMap.of("gamename", gameName)).build());
         }
         game.get().addPlayer(player);
         return CommandResult.success();
