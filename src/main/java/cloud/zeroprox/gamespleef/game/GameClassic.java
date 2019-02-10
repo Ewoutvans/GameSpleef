@@ -147,15 +147,17 @@ public class GameClassic implements IGame {
             player.sendMessage(GameSpleef.mM().EMPTY_INV_TO_JOIN.apply().build());
             return;
         }
+        /*
         player.health().set(20D);
         player.maxHealth().set(20D);
         player.foodLevel().set(20);
-        player.offer(Keys.GAME_MODE, GameModes.ADVENTURE);
-        player.offer(Keys.CAN_FLY, false);
         player.offer(Keys.FIRE_TICKS, 0);
         player.offer(Keys.POTION_EFFECTS, Arrays.asList(
                 PotionEffect.builder().amplifier(5).duration(20 * 60 * 60 * 60).particles(false).potionType(PotionEffectTypes.RESISTANCE).build(),
                 PotionEffect.builder().amplifier(1).duration(20 * 60 * 60 * 60).particles(false).potionType(PotionEffectTypes.SATURATION).build()));
+        */
+        player.offer(Keys.GAME_MODE, GameModes.ADVENTURE);
+        player.offer(Keys.CAN_FLY, false);
         player.sendMessage(GameSpleef.mM().YOU_HAVE_JOINED.apply().build());
 
         if (this.saveInventories) {
@@ -217,7 +219,16 @@ public class GameClassic implements IGame {
         this.mode = GameSpleef.Mode.PLAYING;
         this.inactivePlayers = new HashMap<>();
         for (UUID uuid : this.activePlayers.keySet()) {
-            Sponge.getServer().getPlayer(uuid).get().offer(Keys.GAME_MODE, GameModes.SURVIVAL);
+            Player player = Sponge.getServer().getPlayer(uuid).get();
+            player.offer(Keys.GAME_MODE, GameModes.SURVIVAL);
+            player.health().set(20D);
+            player.maxHealth().set(20D);
+            player.foodLevel().set(20);
+            player.offer(Keys.FIRE_TICKS, 0);
+            player.offer(Keys.POTION_EFFECTS, Arrays.asList(
+                    PotionEffect.builder().amplifier(5).duration(20 * 60 * 60 * 60).particles(false).potionType(PotionEffectTypes.RESISTANCE).build(),
+                    PotionEffect.builder().amplifier(1).duration(20 * 60 * 60 * 60).particles(false).potionType(PotionEffectTypes.SATURATION).build()));
+
         }
 
         if (this.activePlayers.size() <= campPlayers) {
@@ -273,8 +284,10 @@ public class GameClassic implements IGame {
         player.getInventory().clear();
         player.offer(Keys.GAME_MODE, GameModes.SURVIVAL);
         player.offer(Keys.POTION_EFFECTS, new ArrayList<>());
-        player.offer(Keys.FOOD_LEVEL, 20);
-        player.offer(Keys.HEALTH, player.get(Keys.MAX_HEALTH).get());
+        if (this.mode == GameSpleef.Mode.PLAYING) {
+            player.offer(Keys.FOOD_LEVEL, 20);
+            player.offer(Keys.HEALTH, player.get(Keys.MAX_HEALTH).get());
+        }
         player.setScoreboard(null);
         player.setTransform(this.getLobby());
         if (this.saveInventories) {

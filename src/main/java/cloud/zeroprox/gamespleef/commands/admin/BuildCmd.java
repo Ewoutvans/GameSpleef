@@ -91,9 +91,15 @@ public class BuildCmd implements CommandExecutor {
                 break;
             case CORNER_AREA_1:
                 gameSerialize.corner_area_1 = player.getLocation();
+                if (gameSerialize.corner_area_2 != null) {
+                    trySavingArea(src);
+                }
                 break;
             case CORNER_AREA_2:
                 gameSerialize.corner_area_2 = player.getLocation();
+                if (gameSerialize.corner_area_1 != null) {
+                    trySavingArea(src);
+                }
                 break;
             case SAVE_INV:
                 gameSerialize.saveInv = !gameSerialize.saveInv;
@@ -128,21 +134,52 @@ public class BuildCmd implements CommandExecutor {
             if (e instanceof IllegalArgumentException) {
                 switch (e.getMessage()) {
                     case "The box is degenerate on x":
-                        src.sendMessage(Text.of("The floor is not correctly setup, you have selected the same 'X' location for both corners."));
+                        src.sendMessage(Text.of(TextColors.DARK_RED, "The floor is not correctly setup, you have selected the same 'X' location for both corners."));
                         break;
                     case "The box is degenerate on y":
-                        src.sendMessage(Text.of("The floor is not correctly setup, you have selected the same 'Y' location for both corners. Try going 1 block lower."));
+                        src.sendMessage(Text.of(TextColors.DARK_RED, "The floor is not correctly setup, you have selected the same 'Y' location for both corners. Try going 1 block lower."));
                         break;
                     case "The box is degenerate on z":
-                        src.sendMessage(Text.of("The floor is not correctly setup, you have selected the same 'Z' location for both corners."));
+                        src.sendMessage(Text.of(TextColors.DARK_RED, "The floor is not correctly setup, you have selected the same 'Z' location for both corners."));
                         break;
                     default:
-                        src.sendMessage(Text.of("Unknown problem with making the floor region has occurred."));
+                        src.sendMessage(Text.of(TextColors.DARK_RED, "Unknown problem with making the floor region has occurred."));
                         break;
                 }
             }
             gameSerialize.corner_floor_1 = null;
             gameSerialize.corner_floor_2 = null;
+        }
+    }
+
+    private void trySavingArea(CommandSource src) {
+        try {
+            // try making the AABB to see if it was setup correctly
+            AABB aabb = new AABB(gameSerialize.corner_area_1.getBlockX(),
+                    gameSerialize.corner_area_1.getBlockY(),
+                    gameSerialize.corner_area_1.getBlockZ(),
+                    gameSerialize.corner_area_2.getBlockX(),
+                    gameSerialize.corner_area_2.getBlockY(),
+                    gameSerialize.corner_area_2.getBlockZ());
+        } catch (Exception e) {
+            if (e instanceof IllegalArgumentException) {
+                switch (e.getMessage()) {
+                    case "The box is degenerate on x":
+                        src.sendMessage(Text.of(TextColors.DARK_RED, "The area is not correctly setup, you have selected the same 'X' location for both corners."));
+                        break;
+                    case "The box is degenerate on y":
+                        src.sendMessage(Text.of(TextColors.DARK_RED, "The area is not correctly setup, you have selected the same 'Y' location for both corners. Try going 1 block lower."));
+                        break;
+                    case "The box is degenerate on z":
+                        src.sendMessage(Text.of(TextColors.DARK_RED, "The area is not correctly setup, you have selected the same 'Z' location for both corners."));
+                        break;
+                    default:
+                        src.sendMessage(Text.of(TextColors.DARK_RED, "Unknown problem with making the area region has occurred."));
+                        break;
+                }
+            }
+            gameSerialize.corner_area_1 = null;
+            gameSerialize.corner_area_2 = null;
         }
     }
 
