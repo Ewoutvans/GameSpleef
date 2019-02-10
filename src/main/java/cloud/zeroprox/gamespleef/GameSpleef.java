@@ -200,30 +200,34 @@ public class GameSpleef {
             getGameManager().iGames.clear();
             List<GameSerialize> gameSerializeList = rootNodeDefaultConfig.getNode("areas").getList(TypeToken.of(GameSerialize.class));
             for (GameSerialize gameSerialize : gameSerializeList) {
-                IGame iGame = null;
+                try {
+                    IGame iGame = null;
 
-                List<AABB> floors = new ArrayList<>();
-                for (AABBSerialize aabbSerialize : gameSerialize.floors) {
-                    floors.add(aabbSerialize.toAABB());
-                }
+                    List<AABB> floors = new ArrayList<>();
+                    for (AABBSerialize aabbSerialize : gameSerialize.floors) {
+                        floors.add(aabbSerialize.toAABB());
+                    }
 
-                if (gameSerialize.gameType == GameType.CLASSIC) {
-                    iGame = new GameClassic(gameSerialize.name,
-                            gameSerialize.area.toAABB(),
-                            floors,
-                            gameSerialize.spawn,
-                            gameSerialize.lobby,
-                            gameSerialize.playerLimit,
-                            gameSerialize.campRadius,
-                            gameSerialize.campInterval,
-                            gameSerialize.campPlayers,
-                            gameSerialize.saveInv,
-                            gameSerialize.winningCommand,
-                            gameSerialize.winningMinPlayers,
-                            gameSerialize.winningCooldown
-                    );
+                    if (gameSerialize.gameType == GameType.CLASSIC) {
+                        iGame = new GameClassic(gameSerialize.name,
+                                gameSerialize.area.toAABB(),
+                                floors,
+                                gameSerialize.spawn,
+                                gameSerialize.lobby,
+                                gameSerialize.playerLimit,
+                                gameSerialize.campRadius,
+                                gameSerialize.campInterval,
+                                gameSerialize.campPlayers,
+                                gameSerialize.saveInv,
+                                gameSerialize.winningCommand,
+                                gameSerialize.winningMinPlayers,
+                                gameSerialize.winningCooldown
+                        );
+                    }
+                    getGameManager().iGames.add(iGame);
+                } catch (Exception ex) {
+                    logger.error("Error loading " + gameSerialize.name);
                 }
-                getGameManager().iGames.add(iGame);
             }
             logger.info("Loaded: " + getGameManager().iGames.size() + " games");
         }
