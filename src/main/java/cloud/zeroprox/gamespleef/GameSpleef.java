@@ -19,6 +19,7 @@ import ninja.leaping.configurate.commented.CommentedConfigurationNode;
 import ninja.leaping.configurate.hocon.HoconConfigurationLoader;
 import ninja.leaping.configurate.loader.ConfigurationLoader;
 import ninja.leaping.configurate.objectmapping.ObjectMappingException;
+import ninja.leaping.configurate.objectmapping.serialize.TypeSerializerCollection;
 import ninja.leaping.configurate.objectmapping.serialize.TypeSerializers;
 import org.slf4j.Logger;
 import org.spongepowered.api.Sponge;
@@ -139,14 +140,15 @@ public class GameSpleef {
             .child(adminCmd, "admin")
             .executor(new HelpCmd())
             .build();
-    
-    
+
+
     @Listener
     public void onServerStart(GameStartedServerEvent event) {
         Sponge.getCommandManager().register(this, spleefCmd, "gamespleef", "spleef");
         Sponge.getEventManager().registerListeners(this, new Listeners());
+
         TypeToken<Transform<World>> transformTypeToken = new TypeToken<Transform<World>>() {};
-        TypeSerializers.getDefaultSerializers().registerType(transformTypeToken, new TransformWorldSerializer());
+        TypeSerializerCollection serializers = TypeSerializerCollection.defaults().register(transformTypeToken, new TransformWorldSerializer());
 
         gameManager = new GameManager();
         instance = this;
@@ -180,8 +182,7 @@ public class GameSpleef {
             rootNodeDefaultConfig = configManagerDefaultConfig.load();
             loadConfig();
             loadMessages();
-        } catch (IOException e) {
-        } catch (ObjectMappingException e) {
+        } catch (IOException | ObjectMappingException ignored) {
         }
     }
 
@@ -242,9 +243,7 @@ public class GameSpleef {
             rootNodeDefaultConfig.getNode("areas").setValue(new TypeToken<List<GameSerialize>>(){}, gameList);
             configManagerDefaultConfig.save(rootNodeDefaultConfig);
             loadConfig();
-        } catch (ObjectMappingException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
+        } catch (ObjectMappingException | IOException e) {
             e.printStackTrace();
         }
     }
@@ -258,9 +257,7 @@ public class GameSpleef {
             rootNodeDefaultConfig.getNode("areas").setValue(new TypeToken<List<GameSerialize>>(){}, gameList);
             configManagerDefaultConfig.save(rootNodeDefaultConfig);
             loadConfig();
-        } catch (ObjectMappingException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
+        } catch (ObjectMappingException | IOException e) {
             e.printStackTrace();
         }
     }

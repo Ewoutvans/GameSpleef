@@ -17,6 +17,7 @@ import org.spongepowered.api.item.inventory.Inventory;
 import org.spongepowered.api.item.inventory.ItemStack;
 import org.spongepowered.api.item.inventory.entity.PlayerInventory;
 import org.spongepowered.api.scheduler.Task;
+import org.spongepowered.api.scoreboard.Scoreboard;
 import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.format.TextColors;
 import org.spongepowered.api.util.AABB;
@@ -131,6 +132,7 @@ public class GameClassic implements IGame {
 
     @Override
     public void addPlayer(Player player) {
+        this.inactivePlayers.remove(player.getUniqueId());
         if (this.activePlayers.size() >= this.limit) {
             player.sendMessage(GameSpleef.mM().JOIN_GAME_FULL.apply().build());
             return;
@@ -147,15 +149,6 @@ public class GameClassic implements IGame {
             player.sendMessage(GameSpleef.mM().EMPTY_INV_TO_JOIN.apply().build());
             return;
         }
-        /*
-        player.health().set(20D);
-        player.maxHealth().set(20D);
-        player.foodLevel().set(20);
-        player.offer(Keys.FIRE_TICKS, 0);
-        player.offer(Keys.POTION_EFFECTS, Arrays.asList(
-                PotionEffect.builder().amplifier(5).duration(20 * 60 * 60 * 60).particles(false).potionType(PotionEffectTypes.RESISTANCE).build(),
-                PotionEffect.builder().amplifier(1).duration(20 * 60 * 60 * 60).particles(false).potionType(PotionEffectTypes.SATURATION).build()));
-        */
         player.offer(Keys.GAME_MODE, GameModes.ADVENTURE);
         player.offer(Keys.CAN_FLY, false);
         player.sendMessage(GameSpleef.mM().YOU_HAVE_JOINED.apply().build());
@@ -186,6 +179,24 @@ public class GameClassic implements IGame {
 
     @Override
     public void leavePlayer(Player player, boolean resetStats) {
+        if (this.activePlayers.size() <= 2) {
+            if (this.mode != GameSpleef.Mode.PLAYING) {
+                this.mode = GameSpleef.Mode.READY;
+                if (this.countTask != null) {
+                    this.countTask.cancel();
+                    this.countTask = null;
+                }
+                for (UUID playerUid : this.activePlayers.keySet()) {
+                    Optional<Player> activePlayer = Sponge.getServer().getPlayer(playerUid);
+                    if (activePlayer.isPresent() && activePlayer.get().isOnline() && !activePlayer.get().getUniqueId().equals(player.getUniqueId())) {
+                        activePlayer.get().sendMessage(
+                                GameSpleef.mM().SPLEEF.apply().build().concat(Text.of(TextColors.GOLD, "Countdown cancelled, not enough players left to start.")));
+                    }
+                }
+            } else {
+                resetGame();
+            }
+        }
         if (this.activePlayers.size() <= 1) {
             resetGame();
         }
@@ -288,7 +299,7 @@ public class GameClassic implements IGame {
             player.offer(Keys.FOOD_LEVEL, 20);
             player.offer(Keys.HEALTH, player.get(Keys.MAX_HEALTH).get());
         }
-        player.setScoreboard(null);
+        player.setScoreboard(Scoreboard.builder().build());
         player.setTransform(this.getLobby());
         if (this.saveInventories) {
             List<Optional<ItemStack>> items = this.inventories.get(player.getUniqueId());

@@ -19,7 +19,7 @@ public class DisableCmd implements CommandExecutor {
             throw new CommandException(Text.of("Game not found"));
         }
         Optional<IGame> gameOptional = GameSpleef.getGameManager().getGame(gameName.get());
-        gameOptional.ifPresent(game -> game.toggleStatus());
+        gameOptional.ifPresent(IGame::toggleStatus);
         src.sendMessage(Text.of("Game status toggled."));
         return CommandResult.success();
     }

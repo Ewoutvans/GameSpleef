@@ -165,13 +165,13 @@ public class BuildCmd implements CommandExecutor {
             if (e instanceof IllegalArgumentException) {
                 switch (e.getMessage()) {
                     case "The box is degenerate on x":
-                        src.sendMessage(Text.of(TextColors.DARK_RED, "The area is not correctly setup, you have selected the same 'X' location for both corners."));
+                        src.sendMessage(Text.of(TextColors.DARK_RED, "The area is not correctly setup, you have selected the same 'X-coordinate' location for both corners."));
                         break;
                     case "The box is degenerate on y":
-                        src.sendMessage(Text.of(TextColors.DARK_RED, "The area is not correctly setup, you have selected the same 'Y' location for both corners. Try going 1 block lower."));
+                        src.sendMessage(Text.of(TextColors.DARK_RED, "The area is not correctly setup, you have selected the same 'Y-coordinate' location for both corners. Try going 1 block lower."));
                         break;
                     case "The box is degenerate on z":
-                        src.sendMessage(Text.of(TextColors.DARK_RED, "The area is not correctly setup, you have selected the same 'Z' location for both corners."));
+                        src.sendMessage(Text.of(TextColors.DARK_RED, "The area is not correctly setup, you have selected the same 'Z-coordinate' location for both corners."));
                         break;
                     default:
                         src.sendMessage(Text.of(TextColors.DARK_RED, "Unknown problem with making the area region has occurred."));

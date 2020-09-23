@@ -1,4 +1,0 @@
-# GameSpleef
-
-SpongePowered minigame
-
